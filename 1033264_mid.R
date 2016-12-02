@@ -1,0 +1,241 @@
+
+###一、請隨機產生 10000 組正整數儲存成 vector 格式，並輸出成 random10k.csv
+
+#隨機產生10000組正整數
+random10k <- c(sample.int(10000))
+print(random10k)
+#將他輸出成 random10k.csv
+write.csv(random10k, 'C:\\Users\\qwas8_000\\Desktop\\R studio class/random10k.csv')
+
+
+###二、請使用 for 迴圈列出 15 個費布納西(Fibonacci)數列
+
+#使用 for 迴圈列出 15 個費布納西(Fibonacci)數列
+sequence <- 15
+fib <- numeric(sequence)
+#指定第一個數值為1,第二個數值為2
+fib <- integer(15)
+fib[1] <- 1
+fib[2] <- 2
+for(i in 3:15){fib[i] <- fib[i-2]+fib[i-1]}
+print(fib)
+
+
+###三、請將 sample_data.txt 輸入進 R 內，並完成以下計算
+
+#安裝dplyr,並將資料轉換為dplyr格式
+#輸入library,設定工作目錄,將sample_data.txt匯入r中
+install.packages('data.table')
+install.packages('lazyeval')
+library(data.table)
+library(dplyr)
+setwd('C:\\Users\\qwas8_000\\Desktop\\R studio class')
+
+
+###(a) 將 yyyymmddhh 轉成 POSIXct 時間戳記格式， 並新增為一個欄(variable)，命名為 timestamp。並將此 sample data 輸出為 sample_data_parsed.csv (以逗號分隔，具有欄位名稱)
+
+#將-9996、-9997、-9999數值轉換為NA，並輸出為sample_data_parsed.csv
+
+sample_data_parsed <- fread('C:\\Users\\qwas8_000\\Desktop\\R studio class/sample_data.txt' , header = TRUE , na.strings=c('-9996','-9997','-9999'))
+
+
+
+
+library(dplyr)
+#將 yyyymmddhh 轉成 POSIXct 時間戳記格式,再增設一個欄(variable),命名為timestamp。指定原始資料第一欄,然後合併多的一個欄位timestamp
+sample_data_parsed[, timestamp:= as.POSIXct(strptime(yyyymmddhh-1, "%Y%m%d%H"))]
+
+
+
+#合併多個欄位(year,month,day)
+sample_data_parsed[, year:= format.Date(timestamp, "%Y")]
+sample_data_parsed[, yearmonth:= format.Date(timestamp, "%Y-%m")]
+sample_data_parsed[, yearmonthday:= format.Date(timestamp, "%Y-%m-%d")]
+sample_data_parsed[, month:= format.Date(timestamp, "%m")]
+sample_data_parsed[, day:= format.Date(timestamp, "%d")]
+
+
+#將他輸出成sample_data_parsed.csv
+write.csv(sample_data_parsed, 'C:\\Users\\qwas8_000\\Desktop\\R studio class/sample_data_parsed.csv')
+
+
+
+###(b) 請計算 2014 年至 2015 年這個測站的每月平均氣溫、每月平均濕度、每月累積降水， 並用表格呈現。
+
+#將資料轉換為tbl_df的格式
+tbl_data_t <- tbl_df(sample_data_parsed)
+#將年月合併
+month_group <- group_by(tbl_data_t,yearmonth)
+
+
+
+#計算每月平均溫度
+mean_t <- summarise(month_group,mean_1=mean(TX01,na.rm = T))
+
+#計算每月平均濕度
+mean_w <- summarise(month_group,mean_2=mean(RH01,na.rm = T))
+
+#計算累積降水
+mean_f <- summarise(month_group,mean_3=sum(PP01,na.rm = T))
+
+
+
+#合併表格
+mean_tw <- dplyr::full_join(mean_t,mean_w,by="yearmonth")
+mean_twf <- dplyr::full_join(mean_tw,mean_f,by="yearmonth")
+
+#將表格行列交換
+tranmean_twf <- t(mean_twf)
+
+
+
+###(c) 請計算 2014 年和 2015 年最冷月分別是在哪個月份？
+
+arrmean_1 <- arrange(mean_twf,mean_1)
+
+#由此可知2014年和2015年最冷月分為1月
+
+
+###(d) 在 2015 年最冷的那個月份中，該月中每日的最低溫平均是幾度C？
+
+year201501_1 <- filter(tbl_data_t,yearmonth=="2015-01")
+year201501_2 <- group_by(year201501_1,month,day)
+year201501_3 <- summarise(year201501_2,min=min(TX01,na.rm = T))
+summarise(year201501_3, mean(min))
+
+
+#由此可知最低溫平均為14.49032
+
+
+###(e) 請計算 2014 年和 2015 年中，最熱的月分別是在哪個月份？
+
+arrmean_1 <- arrange(mean_twf,mean_1)
+
+#由此可知2014年7月和2015年6月為最熱月
+
+
+###(f) 請計算 2014 年最熱的月份中，該月的每日最高溫平均為幾度C?
+
+year201407_1 <- filter(tbl_data_t,yearmonth=="2014-07")
+year201407_2 <- group_by(year201407_1,month,day)
+year201407_3 <- summarise(year201407_2,max=max(TX01,na.rm = T))
+summarise(year201407_3, mean(max))
+
+#由此可知最高溫平均為34.92258
+
+
+###(g) 請算出 2014 至 2015 年中，最濕月份的平均溫度
+
+arrwet_1 <- arrange(mean_twf,mean_2)
+
+#由此可知2014年9月和2015年8月為最濕月
+
+#根據mean_twf可知201409的平均溫度為28.75835
+#根據mean_twf可知201508的平均溫度為27.82826
+
+###(h) 請計算每個月的月溫差(每月最高溫減去每月最低溫，取兩年平均)，平均月溫差最大的是哪個月？
+
+#將年月日合併
+ymd_group <- group_by(tbl_data_t,year,month,day)
+#計算每月日平均溫
+daymean_t <- summarise(ymd_group,mean_a=mean(TX01,na.rm = T))
+#將ymd_group中的年月合併
+ym_group <- group_by(daymean_t,year,month)
+#找出最大值與最小值
+big_small <- summarise_all(ym_group,funs(max(mean_a),min(mean_a)))
+#選出需要的欄位來做計算
+big_small_select <- select(big_small,year,month,mean_a_max,mean_a_min)
+#新增一個欄位並計算每個月的月溫差
+month_b_s <- mutate(big_small_select,b_s=mean_a_max-mean_a_min)
+#排序month_b_s
+arrmonth_b_s <- arrange(month_b_s,b_s)
+#取兩年平均
+avg_month_b_s <- aggregate(arrmonth_b_s$b_s~arrmonth_b_s$month,FUN=mean)
+
+#由此可知平均月溫差最大的是2月
+
+
+###(i) 請計算這兩年的年溫差平均(每年最高溫減去最低溫)
+
+#將年月合併
+ym_group1 <- group_by(tbl_data_t,year,month)
+#計算每年月均溫
+meanym_group1 <- summarise(ym_group1,mean_b=mean(TX01,na.rm = T))
+#將meanym_group1中的年合併
+y_group1 <- group_by(meanym_group1,year)
+#找出最大值與最小值
+big_small_1 <- summarise_all(y_group1,funs(max(mean_b),min(mean_b)))
+#選出需要的欄位來做計算
+big_small_1_select <- select(big_small_1,year,mean_b_max,mean_b_min)
+#新增一個欄位並計算年溫差
+year_b_s <- mutate(big_small_1_select,b_s_1=mean_b_max-mean_b_min)
+#取平均
+avg_year_b_s <- summarise(year_b_s,mean(b_s_1))
+
+#由此可知年溫差平均為11.27245
+
+
+###(j) 溫量指數(warmth index)是 Kira (1945) 提出的一個生態氣候指標，其計算方式為:
+
+###(k) 請使用 climatol package 繪製 2014 至 2015 的生態氣候圖(Ecological climate diagrams)。 提示：你需要計算出每個月的累積降水平均、每日最高溫平均、每日最低溫平均、每月絕對最低溫。 可參考繪製生態氣候圖
+
+
+###四、請計算 Table 2 中的下列各子題 (30%)
+
+
+#使用read.table來讀取資料
+
+penghu_env.csv <- tbl_df(read.table('C:\\Users\\qwas8_000\\Desktop\\R studio class/penghu_env.csv', header = T, sep = ","))
+
+
+
+###(a) 請計算各島環境因子(total_cover, C, EC, ..., etc.) 的平均、 第一四分位數、中位數、第三四分位數、最大值及最小值以及標準差，並整理成如下表格：
+
+
+
+#選取1~5行鋤頭嶼的資料
+p1 <- penghu_env.csv[1:5,]
+#鋤頭嶼total_cover的平均
+summarise(p1,mean_0=mean(total_cover,na.rm = T))
+#由此可知平均=75
+
+
+#鋤頭嶼total_cover的第一四分位數
+summarise(p1,Q1_0=quantile(total_cover,0.25,na.rm = T))
+#鋤頭嶼total_cover的中位數
+summarise(p1,Q2_0=quantile(total_cover,0.5,na.rm = T))
+#鋤頭嶼total_cover的第三四分位數
+summarise(p1,Q3_0=quantile(total_cover,0.75,na.rm = T))
+
+#由此可知Q1=70,Q3=85,中位數=80
+
+
+#鋤頭嶼total_cover的最大值及最小值
+summarise(p1,max_0=max(total_cover,na.rm = T))
+summarise(p1,min_0=min(total_cover,na.rm = T))
+
+#由此可知最大值=90,最小值=50
+
+
+#鋤頭嶼的標準差
+summarise(p1,sd_0=sd(total_cover,na.rm = T))
+
+#由此可知標準差=0.8414868
+```
+
+```{r}
+#鋤頭嶼total_cover,C,EC,K,Na,N,rock_ratio的平均
+summary_1 <- data.frame(summarize_each(p1, funs(mean)))
+
+
+
+#選取6~29行東吉嶼的資料
+p2 <- penghu_env.csv[6:29,]
+#東吉嶼total_cover,C,EC,K,Na,N,rock_ratio的第一四分位數
+
+
+
+
+###(b) 請分別列出 C, EC, K, Na, N 最高的五個樣區(plotid)
+
+###老師我的資料是亂碼,我不知道怎麼解決
